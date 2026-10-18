@@ -5,20 +5,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: unzip -q plates-manager-project.zip
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
-      - working-directory: plates-manager
+      - name: Build
         run: |
+          ls -R | head -30
+          mkdir /tmp/app
+          unzip -q "$(find . -iname '*.zip' | head -1)" -d /tmp/app
+          cd "$(dirname "$(find /tmp/app -name package.json -not -path '*/node_modules/*' | head -1)")"
           npm install
           npm run build
           npx cap add android
           npx cap sync android
           sed -i 's/<application/<application android:allowBackup="true"/' android/app/src/main/AndroidManifest.xml
           cd android && ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/app-debug.apk"
       - uses: actions/upload-artifact@v4
         with:
           name: plates-manager-apk
-          path: plates-manager/android/app/build/outputs/apk/debug/app-debug.apk
+          path: app-debug.apk
